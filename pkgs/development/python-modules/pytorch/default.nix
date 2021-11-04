@@ -25,7 +25,7 @@
   ninja,
 
   # dependencies for torch.utils.tensorboard
-  pillow, six, future, tensorflow-tensorboard, protobuf,
+  tensorboardSupport ? true, pillow, six, future, tensorflow-tensorboard, protobuf,
 
   isPy3k, pythonOlder }:
 
@@ -230,9 +230,8 @@ in buildPythonPackage rec {
     numpy
     pyyaml
     typing-extensions
-    # the following are required for tensorboard support
-    pillow six future tensorflow-tensorboard protobuf
   ] ++ lib.optionals MPISupport [ mpi ]
+    ++ lib.optionals tensorboardSupport [ pillow six future tensorflow-tensorboard protobuf ]
     ++ lib.optionals (pythonOlder "3.7") [ dataclasses ];
 
   checkInputs = [ hypothesis ninja psutil ];
