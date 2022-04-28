@@ -7,7 +7,7 @@
 , pkg-config
 , glibcLocales
 , cmake
-, python3
+, pythonPackages
 , libpng
 , zlib
 , eigen
@@ -78,12 +78,15 @@ stdenv.mkDerivation rec {
   ];
 
   # TODO: build server, and move .so's to lib output
-  outputs = [ "out" "dev" ];
+  outputs = [ "out" "dev" "python" ];
 
   nativeBuildInputs = [
     cmake
     pkg-config
-    python3
+    pythonPackages.python
+    pythonPackages.setuptools
+    pythonPackages.wheel
+    pythonPackages.pip
   ];
 
   buildInputs = [
@@ -97,6 +100,11 @@ stdenv.mkDerivation rec {
     nlohmann_json
     boost
     oneDNN
+    pythonPackages.pybind11
+  ];
+
+  propagatedBuildInputs = [
+    pythonPackages.numpy
   ];
 
   cmakeDir = "../cmake";
@@ -110,9 +118,15 @@ stdenv.mkDerivation rec {
     "-Donnxruntime_USE_MPI=ON"
     "-Deigen_SOURCE_PATH=${eigen.src}"
     "-Donnxruntime_USE_DNNL=YES"
+    "-Donnxruntime_ENABLE_PYTHON=ON"
   ];
 
   enableParallelBuilding = true;
+
+  postInstall = ''
+    python ../setup.py bdist_wheel
+    pip install dist/*.whl --no-index --no-warn-script-location --prefix="$python" --no-cache --no-deps
+  '';
 
   meta = {
     description = "Cross-platform, high performance scoring engine for ML models";
