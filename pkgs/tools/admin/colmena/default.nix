@@ -1,17 +1,17 @@
-{ stdenv, lib, rustPlatform, fetchFromGitHub, installShellFiles, colmena, testVersion }:
+{ stdenv, lib, rustPlatform, fetchFromGitHub, installShellFiles, colmena, testers }:
 
 rustPlatform.buildRustPackage rec {
   pname = "colmena";
-  version = "0.2.0";
+  version = "0.2.2";
 
   src = fetchFromGitHub {
     owner = "zhaofengli";
     repo = "colmena";
     rev = "v${version}";
-    sha256 = "sha256-WY8SYapnDcfaoLr1iFgwc9/E7xSfOFN2AvMDpk74AI8=";
+    sha256 = "sha256-VsqFiqZUjGpDZfw6ws1rvqm/NGUfFBXHa0N8ZkBaMh8=";
   };
 
-  cargoSha256 = "sha256-ZNSg3hXWKHNQ9yHJS1qW3tFYwzU4ZDa1N0yvoGLmWns=";
+  cargoSha256 = "sha256-NVvPh0+53YIm5Kb/lNyXb7M3bbADBVdsTaPptyb37lw=";
 
   nativeBuildInputs = [ installShellFiles ];
 
@@ -29,7 +29,7 @@ rustPlatform.buildRustPackage rec {
     # We guarantee CLI and Nix API stability for the same minor version
     apiVersion = builtins.concatStringsSep "." (lib.take 2 (lib.splitString "." version));
 
-    tests.version = testVersion { package = colmena; };
+    tests.version = testers.testVersion { package = colmena; };
   };
 
   meta = with lib; {

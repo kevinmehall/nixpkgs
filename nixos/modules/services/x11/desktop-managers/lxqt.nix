@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, utils, ... }:
 
 with lib;
 
@@ -51,7 +51,7 @@ in
     environment.systemPackages =
       pkgs.lxqt.preRequisitePackages ++
       pkgs.lxqt.corePackages ++
-      (pkgs.gnome.removePackagesByName
+      (utils.removePackagesByName
         pkgs.lxqt.optionalPackages
         config.environment.lxqt.excludePackages);
 
@@ -62,6 +62,9 @@ in
     services.gvfs.enable = true;
 
     services.upower.enable = config.powerManagement.enable;
+
+    xdg.portal.enable = true;
+    xdg.portal.extraPortals = [ pkgs.lxqt.xdg-desktop-portal-lxqt ];
   };
 
 }

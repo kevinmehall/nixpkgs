@@ -2,18 +2,25 @@
 , stdenv
 , fetchFromGitHub
 , autoreconfHook
+, openssl
 }:
 
 stdenv.mkDerivation rec {
   pname = "wolfssl";
-  version = "5.1.1";
+  version = "5.2.0";
 
   src = fetchFromGitHub {
     owner = "wolfSSL";
     repo = "wolfssl";
     rev = "v${version}-stable";
-    sha256 = "sha256-/noS5cn8lllWoGyZ9QyjRmdiR6LXzfT4lYGEt+0+Bdw=";
+    sha256 = "1xdhbhn31q7waw7w158hz9n0vj76zlfn5njq7hncf73ks38drj6k";
   };
+
+  postPatch = ''
+    patchShebangs ./scripts
+    # ocsp tests require network access
+    sed -i -e '/ocsp\.test/d' -e '/ocsp-stapling\.test/d' scripts/include.am
+  '';
 
   # Almost same as Debian but for now using --enable-all --enable-reproducible-build instead of --enable-distro to ensure options.h gets installed
   configureFlags = [
@@ -35,6 +42,9 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     autoreconfHook
   ];
+
+  doCheck = true;
+  checkInputs = [ openssl ];
 
   postInstall = ''
      # fix recursive cycle:

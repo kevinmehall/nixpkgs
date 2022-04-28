@@ -12,6 +12,7 @@
 , libgudev
 , polkit
 , libxmlb
+, glib
 , gusb
 , sqlite
 , libarchive
@@ -50,6 +51,9 @@
 , nixosTests
 , runCommand
 , unstableGitUpdater
+, modemmanager
+, libqmi
+, libmbim
 }:
 
 let
@@ -112,7 +116,7 @@ let
 
   self = stdenv.mkDerivation rec {
     pname = "fwupd";
-    version = "1.7.2";
+    version = "1.7.7";
 
     # libfwupd goes to lib
     # daemon, plug-ins and libfwupdplugin go to out
@@ -121,7 +125,7 @@ let
 
     src = fetchurl {
       url = "https://people.freedesktop.org/~hughsient/releases/fwupd-${version}.tar.xz";
-      sha256 = "sha256-hjLfacO6/Fk4fNy1F8POMaWXoJAm5E9ZB9g4RnG5+DQ=";
+      sha256 = "sha256-QUmU06zfZ0qQ9wotoW2k4XalrRH+Y25qs/DhpJ4GKWk=";
     };
 
     patches = [
@@ -136,12 +140,16 @@ let
       # they are not really part of the library.
       ./install-fwupdplugin-to-out.patch
 
+      # Fix detection of installed tests
+      # https://github.com/fwupd/fwupd/issues/3880
+      (fetchpatch {
+        url = "https://github.com/fwupd/fwupd/commit/5bc546221331feae9cedc1892219a25d8837955f.patch";
+        sha256 = "XcLhcDrB2/MFCXjKAyhftQgvJG4BBkp07geM9eK3q1g=";
+      })
+
       # Installed tests are installed to different output
       # we also cannot have fwupd-tests.conf in $out/etc since it would form a cycle.
       ./installed-tests-path.patch
-
-      # Tests detect fwupd is installed when prefix is /usr.
-      ./fix-install-detection.patch
 
       # EFI capsule is located in fwupd-efi now.
       ./efi-app-path.patch
@@ -187,6 +195,9 @@ let
       efivar
       fwupd-efi
       protobufc
+      modemmanager
+      libmbim
+      libqmi
     ] ++ lib.optionals haveDell [
       libsmbios
     ];
@@ -206,6 +217,7 @@ let
       "--sysconfdir=/etc"
       "-Dsysconfdir_install=${placeholder "out"}/etc"
       "-Defi_os_dir=nixos"
+      "-Dplugin_modem_manager=true"
 
       # We do not want to place the daemon into lib (cyclic reference)
       "--libexecdir=${placeholder "out"}/libexec"
@@ -214,7 +226,7 @@ let
       "-Dc_link_args=-Wl,-rpath,${placeholder "out"}/lib"
     ] ++ lib.optionals (!haveDell) [
       "-Dplugin_dell=false"
-      "-Dplugin_synaptics=false"
+      "-Dplugin_synaptics_mst=false"
     ] ++ lib.optionals (!haveRedfish) [
       "-Dplugin_redfish=false"
     ] ++ lib.optionals haveFlashrom [
@@ -250,6 +262,9 @@ let
         contrib/generate-version-script.py \
         meson_post_install.sh \
         po/test-deps
+
+      substituteInPlace data/installed-tests/fwupdmgr-p2p.sh \
+        --replace "gdbus" ${glib.bin}/bin/gdbus
     '';
 
     preCheck = ''
@@ -318,6 +333,8 @@ let
         "fwupd/remotes.d/dell-esrt.conf"
       ] ++ lib.optionals haveRedfish [
         "fwupd/redfish.conf"
+      ] ++ lib.optionals haveMSR [
+        "fwupd/msr.conf"
       ];
 
       # DisabledPlugins key in fwupd/daemon.conf

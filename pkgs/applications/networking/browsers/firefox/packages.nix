@@ -7,16 +7,16 @@ in
 rec {
   firefox = common rec {
     pname = "firefox";
-    version = "96.0.1";
+    version = "99.0.1";
     src = fetchurl {
       url = "mirror://mozilla/firefox/releases/${version}/source/firefox-${version}.source.tar.xz";
-      sha512 = "c0d2ccf9ca930def63dcb9dc269e47f60fd4bbbdcbc01463df0c30e11109a543e310fb36f2334d17b90cb9c96b8dcdd97d0e2d6c589a779de5e4f197c052f9a5";
+      sha512 = "0006b773ef1057a6e0b959d4f39849ad4a79272b38d565da98062b9aaf0effd2b729349c1f9fa10fccf7d2462d2c536b02c167ae6ad4556d6e519c6d22c25a7f";
     };
 
     meta = {
       description = "A web browser built from Firefox source tree";
       homepage = "http://www.mozilla.com/en-US/firefox/";
-      maintainers = with lib.maintainers; [ eelco lovesegfault hexa ];
+      maintainers = with lib.maintainers; [ lovesegfault hexa ];
       platforms = lib.platforms.unix;
       badPlatforms = lib.platforms.darwin;
       broken = stdenv.buildPlatform.is32bit; # since Firefox 60, build on 32-bit platforms fails with "out of memory".
@@ -32,10 +32,10 @@ rec {
 
   firefox-esr-91 = common rec {
     pname = "firefox-esr";
-    version = "91.5.0esr";
+    version = "91.8.0esr";
     src = fetchurl {
       url = "mirror://mozilla/firefox/releases/${version}/source/firefox-${version}.source.tar.xz";
-      sha512 = "1712415b6b73c6a21edfefc39eaba5fcbbca54032f78627c0005d291501d16ef4daffb8b9a160d1d5361113ceba04eb5ddb21d903e3dd8d58838aa9596f2d781";
+      sha512 = "edea2c7d4d3d0322091b20b623019ef041090d9f89f33c8e3140f66a54624261f278257393db70d2038154de8ee02da0bee6ecf85c281f3558338da71fc173c3";
     };
 
     meta = {
@@ -53,5 +53,31 @@ rec {
       attrPath = "firefox-esr-91-unwrapped";
       versionSuffix = "esr";
     };
+  };
+
+  librewolf =
+  let
+    librewolf-src = callPackage ./librewolf { };
+  in
+  (common rec {
+    pname = "librewolf";
+    binaryName = "librewolf";
+    version = librewolf-src.packageVersion;
+    src = librewolf-src.firefox;
+    inherit (librewolf-src) extraConfigureFlags extraPostPatch extraPassthru;
+
+    meta = {
+      description = "A fork of Firefox, focused on privacy, security and freedom";
+      homepage = "https://librewolf.net/";
+      maintainers = with lib.maintainers; [ squalus ];
+      inherit (firefox.meta) platforms badPlatforms broken maxSilent license;
+    };
+    updateScript = callPackage ./librewolf/update.nix {
+      attrPath = "librewolf-unwrapped";
+    };
+  }).override {
+    crashreporterSupport = false;
+    enableOfficialBranding = false;
+    pgoSupport = false; # Profiling gets stuck and doesn't terminate.
   };
 }

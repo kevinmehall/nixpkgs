@@ -7,17 +7,18 @@
   # compilers to determine the desired target.
 , defaultTargets ? []}:
 stdenv.mkDerivation rec {
-  version = "4.5.2";
+  version = "5.0.1";
   pname = "rocminfo";
   src = fetchFromGitHub {
     owner = "RadeonOpenCompute";
     repo = "rocminfo";
     rev = "rocm-${version}";
-    sha256 = "sha256-VIlHYiGLen4xmdP7kpmObj5wKy6Qq7iupJFtPa4Zd98=";
+    sha256 = "sha256-H9JdrDS/pbvYMKkayu/1rrXusHeXBH1CO9jYArsbCNI=";
   };
 
   enableParallelBuilding = true;
-  buildInputs = [ cmake rocm-cmake rocm-runtime ];
+  nativeBuildInputs = [ cmake ];
+  buildInputs = [ rocm-cmake rocm-runtime ];
   cmakeFlags = [
     "-DROCM_DIR=${rocm-runtime}"
     "-DROCRTST_BLD_TYPE=Release"

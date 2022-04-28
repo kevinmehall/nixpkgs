@@ -17,7 +17,7 @@ let
       exec ${askPassword} "$@"
     '';
 
-  knownHosts = map (h: getAttr h cfg.knownHosts) (attrNames cfg.knownHosts);
+  knownHosts = attrValues cfg.knownHosts;
 
   knownHostsText = (flip (concatMapStringsSep "\n") knownHosts
     (h: assert h.hostNames != [];
@@ -142,7 +142,7 @@ in
 
       knownHosts = mkOption {
         default = {};
-        type = types.attrsOf (types.submodule ({ name, ... }: {
+        type = types.attrsOf (types.submodule ({ name, config, options, ... }: {
           options = {
             certAuthority = mkOption {
               type = types.bool;
@@ -154,10 +154,25 @@ in
             };
             hostNames = mkOption {
               type = types.listOf types.str;
-              default = [];
+              default = [ name ] ++ config.extraHostNames;
+              defaultText = literalExpression "[ ${name} ] ++ config.${options.extraHostNames}";
               description = ''
                 A list of host names and/or IP numbers used for accessing
-                the host's ssh service.
+                the host's ssh service. This list includes the name of the
+                containing <literal>knownHosts</literal> attribute by default
+                for convenience. If you wish to configure multiple host keys
+                for the same host use multiple <literal>knownHosts</literal>
+                entries with different attribute names and the same
+                <literal>hostNames</literal> list.
+              '';
+            };
+            extraHostNames = mkOption {
+              type = types.listOf types.str;
+              default = [];
+              description = ''
+                A list of additional host names and/or IP numbers used for
+                accessing the host's ssh service. This list is ignored if
+                <literal>hostNames</literal> is set explicitly.
               '';
             };
             publicKey = mkOption {
@@ -186,21 +201,24 @@ in
               '';
             };
           };
-          config = {
-            hostNames = mkDefault [ name ];
-          };
         }));
         description = ''
-          The set of system-wide known SSH hosts.
+          The set of system-wide known SSH hosts. To make simple setups more
+          convenient the name of an attribute in this set is used as a host name
+          for the entry. This behaviour can be disabled by setting
+          <literal>hostNames</literal> explicitly. You can use
+          <literal>extraHostNames</literal> to add additional host names without
+          disabling this default.
         '';
         example = literalExpression ''
           {
             myhost = {
-              hostNames = [ "myhost" "myhost.mydomain.com" "10.10.1.4" ];
+              extraHostNames = [ "myhost.mydomain.com" "10.10.1.4" ];
               publicKeyFile = ./pubkeys/myhost_ssh_host_dsa_key.pub;
             };
-            myhost2 = {
-              hostNames = [ "myhost2" ];
+            "myhost2.net".publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILIRuJ8p1Fi+m6WkHV0KWnRfpM1WxoW8XAS+XvsSKsTK";
+            "myhost2.net/dsa" = {
+              hostNames = [ "myhost2.net" ];
               publicKeyFile = ./pubkeys/myhost2_ssh_host_dsa_key.pub;
             };
           }

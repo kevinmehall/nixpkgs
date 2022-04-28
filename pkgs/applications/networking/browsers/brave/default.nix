@@ -12,7 +12,6 @@
 , freetype
 , gdk-pixbuf
 , glib
-, gnome2
 , gnome
 , gsettings-desktop-schemas
 , gtk3
@@ -38,6 +37,7 @@
 , pango
 , pipewire
 , udev
+, wayland
 , xorg
 , zlib
 , xdg-utils
@@ -60,7 +60,6 @@ rpath = lib.makeLibraryPath [
   freetype
   gdk-pixbuf
   glib
-  gnome2.GConf
   gtk3
   libdrm
   libpulseaudio
@@ -84,6 +83,7 @@ rpath = lib.makeLibraryPath [
   pango
   pipewire
   udev
+  wayland
   xdg-utils
   xorg.libxcb
   zlib
@@ -93,11 +93,11 @@ in
 
 stdenv.mkDerivation rec {
   pname = "brave";
-  version = "1.34.80";
+  version = "1.37.116";
 
   src = fetchurl {
     url = "https://github.com/brave/brave-browser/releases/download/v${version}/brave-browser_${version}_amd64.deb";
-    sha256 = "2N+dXQGVfm3GsaKKo3EBxLu+cu08OjlrqkgXX9knFys=";
+    sha256 = "HoqmzUyYas5ho9S8ZeXHj+LuNspejuQ69B6HxuKXWtw=";
   };
 
   dontConfigure = true;
@@ -162,6 +162,7 @@ stdenv.mkDerivation rec {
   preFixup = ''
     # Add command line args to wrapGApp.
     gappsWrapperArgs+=(--add-flags ${lib.escapeShellArg commandLineArgs})
+    gappsWrapperArgs+=(--add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform=wayland}}")
   '';
 
   installCheckPhase = ''

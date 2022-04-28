@@ -12,17 +12,17 @@
 
 buildPythonPackage rec {
   pname = "spacy-transformers";
-  version = "1.1.3";
+  version = "1.1.5";
 
   disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "f4f553d3d2a065147a8c1292b5d9adf050c0f78dd15bb05c9614341cf88c5574";
+    sha256 = "sha256-nxbmnFyHptbe5M7rQi2ECGoBpxUuutdCtY20eHsGDPI=";
   };
 
   postPatch = ''
-    sed -i 's/transformers>=3.4.0,<4.12.0/transformers/' setup.cfg
+    sed -i 's/transformers>=3.4.0,<4.13.0/transformers/' setup.cfg
   '';
 
   propagatedBuildInputs = [

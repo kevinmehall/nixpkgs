@@ -6,6 +6,7 @@
 , perl
 , pkg-config
 , rustPlatform
+, sqlcipher
 , sqlite
 , fixDarwinDylibNames
 , CoreFoundation
@@ -15,13 +16,13 @@
 
 stdenv.mkDerivation rec {
   pname = "libdeltachat";
-  version = "1.70.0";
+  version = "1.77.0";
 
   src = fetchFromGitHub {
     owner = "deltachat";
     repo = "deltachat-core-rust";
     rev = version;
-    hash = "sha256-702XhFWvFG+g++3X97sy6C5DMNWogv1Xbr8QPR8QyLo=";
+    hash = "sha256-SEsa83PQ2r3PBJuJhTMeje1n2mZUt/f61DvoVPwyxvs=";
   };
 
   patches = [
@@ -33,7 +34,7 @@ stdenv.mkDerivation rec {
   cargoDeps = rustPlatform.fetchCargoTarball {
     inherit src;
     name = "${pname}-${version}";
-    hash = "sha256-MiSGJMXe8vouv4XEHXq274FHEvBMtd7IX6DyNJIWYeU=";
+    hash = "sha256-6srybgs1DGaE6iMrnRUWRnoQM00VCsZwMNdKQ2eqqxg=";
   };
 
   nativeBuildInputs = [
@@ -49,6 +50,7 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     openssl
+    sqlcipher
     sqlite
   ] ++ lib.optionals stdenv.isDarwin [
     CoreFoundation

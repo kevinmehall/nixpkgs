@@ -18,10 +18,10 @@ let
   };
 in stdenv.mkDerivation rec {
   version = "2.3.2";
-  name = "cde-${version}";
+  pname = "cde";
 
   src = fetchurl {
-    url = "mirror://sourceforge/cdesktopenv/${name}.tar.gz";
+    url = "mirror://sourceforge/cdesktopenv/cde-${version}.tar.gz";
     sha256 = "029rljhi5r483x8rzdpl8625z0wx8r7k2m0364nbw66h5pig9lbx";
   };
 
@@ -46,6 +46,8 @@ in stdenv.mkDerivation rec {
     bison ncompress gawk autoPatchelfHook makeWrapper fakeroot
     rpcsvc-proto
   ];
+  # build fails otherwise
+  enableParallelBuilding = false;
 
   makeFlags = [
     "World"
@@ -53,6 +55,19 @@ in stdenv.mkDerivation rec {
     "IMAKECPP=cpp"
     "LOCALE_ARCHIVE=${glibcLocales}/lib/locale/locale-archive"
   ];
+
+  preConfigure = ''
+    # binutils 2.37 fix
+    fixupList=(
+      "config/cf/Imake.tmpl"
+      "config/util/crayar.sh"
+      "config/util/crayar.sh"
+      "programs/dtwm/Makefile.tmpl"
+    )
+    for toFix in "''${fixupList[@]}"; do
+      substituteInPlace "$toFix" --replace "clq" "cq"
+    done
+  '';
 
   preBuild = ''
     while IFS= read -r -d ''$'\0' i; do

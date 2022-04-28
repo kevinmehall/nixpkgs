@@ -19,15 +19,20 @@
 
 buildPythonPackage rec {
   pname = "commoncode";
-  version = "30.0.0";
-  format = "setuptools";
+  version = "30.1.1";
+  format = "pyproject";
 
   disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-6SeU4u6pfDuGCgCYAO5fdbWBxW9XN3WvM8j6DwUlFwM=";
+    sha256 = "sha256-KymdX+5CAYSRpOwpqQ1DMCFWqkeMAmOHjVnBZTji76I=";
   };
+
+  postPatch = ''
+    substituteInPlace setup.cfg \
+      --replace "intbitset >= 2.3.0, < 3.0" "intbitset >= 2.3.0"
+  '';
 
   dontConfigure = true;
 

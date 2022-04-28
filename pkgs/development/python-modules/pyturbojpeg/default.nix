@@ -10,13 +10,13 @@
 
 buildPythonPackage rec {
   pname = "pyturbojpeg";
-  version = "1.6.4";
+  version = "1.6.6";
   format = "setuptools";
 
   src = fetchPypi {
     pname = "PyTurboJPEG";
     inherit version;
-    hash = "sha256-kAIFFK7VnwL7o4G512f7kVVDBLz2SnjapzzpNM/KNKA=";
+    hash = "sha256-gN0VNISogw2rTr58DuHLQ8VyOg6VE3X9T/j6fw0EdXw=";
   };
 
   patches = [

@@ -22,11 +22,12 @@
 , Cocoa
 , Foundation
 , libiconv
+, nixosTests
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "wezterm";
-  version = "20220101-133340-7edc5b5a";
+  version = "20220408-101518-b908e2dd";
 
   outputs = [ "out" "terminfo" ];
 
@@ -35,7 +36,7 @@ rustPlatform.buildRustPackage rec {
     repo = pname;
     rev = version;
     fetchSubmodules = true;
-    sha256 = "sha256-UZCvKbZdZ7K4RtvVLmr44M612tqd4rkrjF2tys0JHNM=";
+    sha256 = "sha256-kuuoD+hqgj7QXFRIxa112oc4idtcK0ptFACDpI0bzGY=";
   };
 
   postPatch = ''
@@ -45,7 +46,7 @@ rustPlatform.buildRustPackage rec {
     rm -r wezterm-ssh/tests
   '';
 
-  cargoSha256 = "1imil15n9mf1r71qdp4cb4q7kzrrc2cspml0d54825yqaq8vjhsc";
+  cargoSha256 = "sha256-iIb2zLUZpn23ooEiOP+yQMYUUmvef/KqvjzgLOFmjs0=";
 
   nativeBuildInputs = [
     pkg-config
@@ -98,6 +99,11 @@ rustPlatform.buildRustPackage rec {
     cp -r assets/shell-integration/* "$OUT_APP"
     ln -s $out/bin/{wezterm,wezterm-mux-server,wezterm-gui,strip-ansi-escapes} "$OUT_APP"
   '';
+
+  passthru.tests = {
+    all-terminfo = nixosTests.allTerminfo;
+    test = nixosTests.terminal-emulators.wezterm;
+  };
 
   meta = with lib; {
     description = "A GPU-accelerated cross-platform terminal emulator and multiplexer written by @wez and implemented in Rust";

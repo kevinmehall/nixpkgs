@@ -4,20 +4,21 @@
 , openssh, pcre2, bash
 , asciidoc, texinfo, xmlto, docbook2x, docbook_xsl, docbook_xml_dtd_45
 , libxslt, tcl, tk, makeWrapper, libiconv
-, svnSupport, subversionClient, perlLibs, smtpPerlLibs
+, svnSupport ? false, subversionClient, perlLibs, smtpPerlLibs
 , perlSupport ? stdenv.buildPlatform == stdenv.hostPlatform
 , nlsSupport ? true
 , osxkeychainSupport ? stdenv.isDarwin
-, guiSupport
+, guiSupport ? false
 , withManual ? true
 , pythonSupport ? true
 , withpcre2 ? true
-, sendEmailSupport
+, sendEmailSupport ? false
 , darwin
 , nixosTests
 , withLibsecret ? false
 , pkg-config, glib, libsecret
 , gzip # needed at runtime by gitweb.cgi
+, withSsh ? false
 }:
 
 assert osxkeychainSupport -> stdenv.isDarwin;
@@ -25,49 +26,50 @@ assert sendEmailSupport -> perlSupport;
 assert svnSupport -> perlSupport;
 
 let
-  version = "2.34.1";
+  version = "2.35.3";
   svn = subversionClient.override { perlBindings = perlSupport; };
-
   gitwebPerlLibs = with perlPackages; [ CGI HTMLParser CGIFast FCGI FCGIProcManager HTMLTagCloud ];
 in
 
 stdenv.mkDerivation {
-  pname = "git";
+  pname = "git"
+    + lib.optionalString svnSupport "-with-svn"
+    + lib.optionalString (!svnSupport && !guiSupport && !sendEmailSupport && !withManual && !pythonSupport && !withpcre2) "-minimal";
   inherit version;
 
   src = fetchurl {
     url = "https://www.kernel.org/pub/software/scm/git/git-${version}.tar.xz";
-    sha256 = "0b40vf315s1kz65x1wq47g8srl4wqac39pwnvlj1mdzs3kfma1rs";
+    sha256 = "sha256-FenbT5vy7Z//MMtioAxcfAkBAV9asEjNtOiwTd7gD6I=";
   };
 
   outputs = [ "out" ] ++ lib.optional withManual "doc";
+  separateDebugInfo = true;
 
   hardeningDisable = [ "format" ];
 
   enableParallelBuilding = true;
 
-  ## Patch
-
   patches = [
     ./docbook2texi.patch
     ./git-sh-i18n.patch
-    ./ssh-path.patch
     ./git-send-email-honor-PATH.patch
     ./installCheck-path.patch
+  ] ++ lib.optionals withSsh [
+    ./ssh-path.patch
   ];
 
   postPatch = ''
-    for x in connect.c git-gui/lib/remote_add.tcl ; do
-      substituteInPlace "$x" \
-        --subst-var-by ssh "${openssh}/bin/ssh"
-    done
-
     # Fix references to gettext introduced by ./git-sh-i18n.patch
     substituteInPlace git-sh-i18n.sh \
         --subst-var-by gettext ${gettext}
 
     # ensure we are using the correct shell when executing the test scripts
     patchShebangs t/*.sh
+  '' + lib.optionalString withSsh ''
+    for x in connect.c git-gui/lib/remote_add.tcl ; do
+      substituteInPlace "$x" \
+        --subst-var-by ssh "${openssh}/bin/ssh"
+    done
   '';
 
   nativeBuildInputs = [ gettext perlPackages.perl makeWrapper ]
@@ -166,8 +168,13 @@ stdenv.mkDerivation {
       cp -a contrib $out/share/git/
       mkdir -p $out/share/bash-completion/completions
       ln -s $out/share/git/contrib/completion/git-completion.bash $out/share/bash-completion/completions/git
-      mkdir -p $out/share/bash-completion/completions
       ln -s $out/share/git/contrib/completion/git-prompt.sh $out/share/bash-completion/completions/
+      # only readme, developed in another repo
+      rm -r contrib/hooks/multimail
+      mkdir -p $out/share/git-core/contrib
+      cp -a contrib/hooks/ $out/share/git-core/contrib/
+      substituteInPlace $out/share/git-core/contrib/hooks/pre-auto-gc-battery \
+        --replace ' grep' ' ${gnugrep}/bin/grep' \
 
       # grep is a runtime dependency, need to patch so that it's found
       substituteInPlace $out/libexec/git-core/git-sh-setup \

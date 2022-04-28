@@ -8,17 +8,18 @@
 , qttools
 , qtx11extras
 , lxqtUpdateScript
+, nixosTests
 }:
 
 mkDerivation rec {
   pname = "qterminal";
-  version = "1.0.0";
+  version = "1.1.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
     repo = pname;
     rev = version;
-    sha256 = "12p3fnbkpj6z0iplg75304l8kvnn145iq6bpw30n9bwflxrd6yhd";
+    sha256 = "x+rgDrijDsMMdpU7afkn0dsSQbuBbEI9agoaLVsR/q8=";
   };
 
   nativeBuildInputs = [
@@ -34,6 +35,8 @@ mkDerivation rec {
   ];
 
   passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
+
+  passthru.tests.test = nixosTests.terminal-emulators.qterminal;
 
   meta = with lib; {
     homepage = "https://github.com/lxqt/qterminal";

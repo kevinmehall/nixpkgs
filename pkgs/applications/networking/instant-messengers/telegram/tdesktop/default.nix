@@ -70,7 +70,7 @@ let
 in
 env.mkDerivation rec {
   pname = "telegram-desktop";
-  version = "3.4.3";
+  version = "3.6.0";
   # Note: Update via pkgs/applications/networking/instant-messengers/telegram/tdesktop/update.py
 
   # Telegram-Desktop with submodules
@@ -79,8 +79,16 @@ env.mkDerivation rec {
     repo = "tdesktop";
     rev = "v${version}";
     fetchSubmodules = true;
-    sha256 = "0w8llqc4ffhp4gkvk6cyxah16yxm15am0msg3qn39fi2qqnm01x8";
+    sha256 = "0zcjm08nfdlxrsv0fi6dqg3lk52bcvsxnsf6jm5fv6gf5v9ia3hq";
   };
+
+  patches = [
+    # fix build with KWayland 5.94+
+    # cf. https://invent.kde.org/frameworks/kwayland/-/commit/de442e4a94e249a29cf2e005db8e0a5e4a6a13ed
+    # upstream bug: https://github.com/telegramdesktop/tdesktop/issues/24375
+    # FIXME remove when no longer necessary
+    ./kf594.diff
+  ];
 
   postPatch = ''
     substituteInPlace Telegram/CMakeLists.txt \
@@ -189,6 +197,6 @@ env.mkDerivation rec {
     platforms = platforms.linux;
     homepage = "https://desktop.telegram.org/";
     changelog = "https://github.com/telegramdesktop/tdesktop/releases/tag/v${version}";
-    maintainers = with maintainers; [ oxalica vanilla ];
+    maintainers = with maintainers; [ oxalica ];
   };
 }

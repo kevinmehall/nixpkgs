@@ -23,7 +23,7 @@
 , libusb1, re2
 , ffmpeg, libxslt, libxml2
 , nasm
-, nspr, nss, systemd
+, nspr, nss
 , util-linux, alsa-lib
 , bison, gperf, libkrb5
 , glib, gtk3, dbus-glib
@@ -39,14 +39,14 @@
 , glibc # gconv + locale
 
 # Package customization:
-, gnomeSupport ? false, gnome2 ? null
-, gnomeKeyringSupport ? false, libgnome-keyring3 ? null
 , cupsSupport ? true, cups ? null
 , proprietaryCodecs ? true
 , pulseSupport ? false, libpulseaudio ? null
 , ungoogled ? false, ungoogled-chromium
 # Optional dependencies:
-, libgcrypt ? null # gnomeSupport || cupsSupport
+, libgcrypt ? null # cupsSupport
+, systemdSupport ? stdenv.isLinux
+, systemd
 }:
 
 buildFun:
@@ -60,6 +60,13 @@ let
   clangFormatPython3 = fetchurl {
     url = "https://chromium.googlesource.com/chromium/tools/build/+/e77882e0dde52c2ccf33c5570929b75b4a2a2522/recipes/recipe_modules/chromium/resources/clang-format?format=TEXT";
     sha256 = "0ic3hn65dimgfhakli1cyf9j3cxcqsf1qib706ihfhmlzxf7256l";
+  };
+  # https://webrtc-review.googlesource.com/c/src/+/255601
+  webrtcWaylandScreenshareCoredumpFix = fetchurl {
+    # PipeWire capturer: check existence of cursor metadata
+    name = "webrtc-wayland-screenshare-coredump-fix.patch";
+    url = "https://webrtc-review.googlesource.com/changes/src~255601/revisions/2/patch?download";
+    hash = "sha256-PHGwEoYhMa+ZL2ner10FwdGUWUxsVr+HWuZOAEugYDY=";
   };
 
   # The additional attributes for creating derivations based on the chromium
@@ -96,7 +103,7 @@ let
     "libpng"
     "libwebp"
     "libxslt"
-    "opus"
+    # "opus"
   ];
 
   opusWithCustomModes = libopus.override {
@@ -114,7 +121,7 @@ let
   };
 
   base = rec {
-    name = "${packageName}-unwrapped-${version}";
+    pname = "${packageName}-unwrapped";
     inherit (upstream-info) version;
     inherit packageName buildType buildPath;
 
@@ -139,7 +146,7 @@ let
       libusb1 re2
       ffmpeg libxslt libxml2
       nasm
-      nspr nss systemd
+      nspr nss
       util-linux alsa-lib
       bison gperf libkrb5
       glib gtk3 dbus-glib
@@ -151,8 +158,7 @@ let
       libdrm wayland mesa.drivers libxkbcommon
       curl
       libepoxy
-    ] ++ optionals gnomeSupport [ gnome2.GConf libgcrypt ]
-      ++ optional gnomeKeyringSupport libgnome-keyring3
+    ] ++ optional systemdSupport systemd
       ++ optionals cupsSupport [ libgcrypt cups ]
       ++ optional pulseSupport libpulseaudio;
 
@@ -161,31 +167,11 @@ let
       ./patches/no-build-timestamps.patch
       # For bundling Widevine (DRM), might be replaceable via bundle_widevine_cdm=true in gnFlags:
       ./patches/widevine-79.patch
-    ] ++ lib.optionals (versionRange "97" "98") [
-      # A critical Ozone/Wayland fix:
-      # (Note: The patch for surface_augmenter.cc doesn't apply on M97 so we extract that part.)
-      (fetchpatch {
-        # [linux/wayland] Fixed terminate caused by binding to wrong version.
-        url = "https://github.com/chromium/chromium/commit/dd4c3ddadbb9869f59cee201a38e9ca3b9154f4d.patch";
-        excludes = [ "ui/ozone/platform/wayland/host/surface_augmenter.cc" ];
-        sha256 = "sha256-lp4kxPNAkafdE9NfD3ittTCpomRpX9Hqhtt9GFf4Ntw=";
-      })
-      ./patches/m97-ozone-wayland-fix-surface_augmenter.patch
-    ] ++ lib.optionals (versionRange "98" "99") [
-      (githubPatch {
-        # [linux/wayland] Fixed terminate caused by binding to wrong version.
-        commit = "dd4c3ddadbb9869f59cee201a38e9ca3b9154f4d";
-        sha256 = "sha256-FH7lBQTruMzkBT2XQ+kgADmJA0AxJfaV/gvtoqfQ4a4=";
-      })
-    ] ++ lib.optionals (versionRange "97" "99") [
-      (githubPatch {
-        # [linux/wayland] Fixed terminate caused by binding to wrong version. (fixup)
-        commit = "a84b79daa8897b822336b8f348ef4daaae07af37";
-        sha256 = "sha256-2x6/rGGzTC6lKLMkVyD9RNCTsMVrtRQyr/NjSpaj2is=";
-      })
     ];
 
-    postPatch = ''
+    postPatch = optionalString (versionRange "100" "101") ''
+      base64 --decode ${webrtcWaylandScreenshareCoredumpFix} | patch -p1 -d third_party/webrtc
+    '' + ''
       # remove unused third-party
       for lib in ${toString gnSystemLibraries}; do
         if [ -d "third_party/$lib" ]; then
@@ -205,6 +191,7 @@ let
           --replace "/usr/bin/env -S make -f" "/usr/bin/make -f"
       fi
       chmod -x third_party/webgpu-cts/src/tools/run_deno
+      ${lib.optionalString (chromiumVersionAtLeast "102") "chmod -x third_party/dawn/third_party/webgpu-cts/tools/run_deno"}
 
       # We want to be able to specify where the sandbox is via CHROME_DEVEL_SANDBOX
       substituteInPlace sandbox/linux/suid/client/setuid_sandbox_host.cc \
@@ -226,9 +213,10 @@ let
       sed -i -e 's@"\(#!\)\?.*xdg-@"\1${xdg-utils}/bin/xdg-@' \
         chrome/browser/shell_integration_linux.cc
 
+    '' + lib.optionalString systemdSupport ''
       sed -i -e '/lib_loader.*Load/s!"\(libudev\.so\)!"${lib.getLib systemd}/lib/\1!' \
         device/udev_linux/udev?_loader.cc
-
+    '' + ''
       sed -i -e '/libpci_loader.*Load/s!"\(libpci\.so\)!"${pciutils}/lib/\1!' \
         gpu/config/gpu_info_collector_linux.cc
 
@@ -242,7 +230,7 @@ let
       # Link to our own Node.js and Java (required during the build):
       mkdir -p third_party/node/linux/node-linux-x64/bin
       ln -s "${pkgsBuildHost.nodejs}/bin/node" third_party/node/linux/node-linux-x64/bin/node
-      ln -s "${pkgsBuildHost.jre8}/bin/java" third_party/jdk/current/bin/
+      ln -s "${pkgsBuildHost.jre8_headless}/bin/java" third_party/jdk/current/bin/
 
       # Allow building against system libraries in official builds
       sed -i 's/OFFICIAL_BUILD/GOOGLE_CHROME_BUILD/' tools/generate_shim_headers/generate_shim_headers.py
@@ -288,8 +276,8 @@ let
       google_api_key = "AIzaSyDGi15Zwl11UNe6Y-5XW_upsfyw31qwZPI";
 
       # Optional features:
-      use_gio = gnomeSupport;
-      use_gnome_keyring = gnomeKeyringSupport;
+      use_gio = true;
+      use_gnome_keyring = false; # Superseded by libsecret
       use_cups = cupsSupport;
 
       # Feature overrides:
@@ -301,6 +289,9 @@ let
       enable_widevine = true;
       # Provides the enable-webrtc-pipewire-capturer flag to support Wayland screen capture:
       rtc_use_pipewire = true;
+    } // optionalAttrs (chromiumVersionAtLeast "101") {
+      # Disable PGO because the profile data requires a newer compiler version (LLVM 14 isn't sufficient):
+      chrome_pgo_phase = 0;
     } // optionalAttrs proprietaryCodecs {
       # enable support for the H.264 codec
       proprietary_codecs = true;
@@ -309,25 +300,8 @@ let
     } // optionalAttrs pulseSupport {
       use_pulseaudio = true;
       link_pulseaudio = true;
-    } // optionalAttrs ungoogled {
-      chrome_pgo_phase = 0;
-      enable_hangout_services_extension = false;
-      enable_js_type_check = false;
-      enable_mdns = false;
-      enable_nacl_nonsfi = false;
-      enable_one_click_signin = false;
-      enable_reading_list = false;
-      enable_remoting = false;
-      enable_reporting = false;
-      enable_service_discovery = false;
-      exclude_unwind_tables = true;
-      google_api_key = "";
-      google_default_client_id = "";
-      google_default_client_secret = "";
-      safe_browsing_mode = 0;
-      use_official_google_api_keys = false;
-      use_unofficial_version_number = false;
-    } // (extraAttrs.gnFlags or {}));
+    } // optionalAttrs ungoogled (importTOML ./ungoogled-flags.toml)
+    // (extraAttrs.gnFlags or {}));
 
     configurePhase = ''
       runHook preConfigure

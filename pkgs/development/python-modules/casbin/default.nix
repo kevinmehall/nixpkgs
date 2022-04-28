@@ -9,7 +9,7 @@
 
 buildPythonPackage rec {
   pname = "casbin";
-  version = "1.15.2";
+  version = "1.16.0";
   format = "setuptools";
 
   disabled = pythonOlder "3.6";
@@ -17,8 +17,8 @@ buildPythonPackage rec {
   src = fetchFromGitHub {
     owner = pname;
     repo = "pycasbin";
-    rev = "v${version}";
-    sha256 = "0mrk6b16f4ds666qa4884kjjbmb55kpfvvqsznfmyg9iii6dir50";
+    rev = "refs/tags/v${version}";
+    sha256 = "sha256-fPojcHuz2d3Im2Ri6iCu79KLuRNucIG/IwWrUo0uYH8=";
   };
 
   propagatedBuildInputs = [

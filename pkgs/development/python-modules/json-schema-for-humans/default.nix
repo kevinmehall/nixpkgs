@@ -19,7 +19,7 @@
 
 buildPythonPackage rec {
   pname = "json-schema-for-humans";
-  version = "0.39.5";
+  version = "0.40";
   format = "pyproject";
 
   disabled = pythonOlder "3.6";
@@ -28,8 +28,13 @@ buildPythonPackage rec {
     owner = "coveooss";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-gaholnLO5oIQaXgliuvlU2MfpjiCMgAPplOPgvMYim8=";
+    hash = "sha256-H0jvOnrWE4/xxRYNehshHBRNc/qLX1+sCV7O1ACCdew=";
   };
+
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace 'pytz = "^2021.1"' 'pytz = "*"'
+  '';
 
   nativeBuildInputs = [
     poetry-core
@@ -53,12 +58,6 @@ buildPythonPackage rec {
     beautifulsoup4
     pytestCheckHook
   ];
-
-  postPatch = ''
-    # https://github.com/coveooss/json-schema-for-humans/issues/127
-    substituteInPlace pyproject.toml \
-      --replace 'PyYAML = "^5.4.1"' 'PyYAML = "*"'
-  '';
 
   disabledTests = [
     # Tests require network access
