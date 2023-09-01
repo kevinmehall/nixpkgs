@@ -12,7 +12,7 @@
 , git, pybind11, which, binutils, glibcLocales, cython, perl, coreutils
 # Common libraries
 , jemalloc, mpi, gast, grpc, sqlite, boringssl, jsoncpp, nsync
-, curl, snappy, flatbuffers-core, lmdb-core, icu, double-conversion, libpng, libjpeg_turbo, giflib, protobuf-core
+, curl, snappy, flatbuffers-core, icu, double-conversion, libpng, libjpeg_turbo, giflib, protobuf-core
 # Upstream by default includes cuda support since tensorflow 1.15. We could do
 # that in nix as well. It would make some things easier and less confusing, but
 # it would also make the default tensorflow package unfree. See
@@ -99,7 +99,7 @@ let
 
   tfFeature = x: if x then "1" else "0";
 
-  version = "2.11.1";
+  version = "2.13.0";
   variant = lib.optionalString cudaSupport "-gpu";
   pname = "tensorflow${variant}";
 
@@ -208,11 +208,27 @@ let
       owner = "tensorflow";
       repo = "tensorflow";
       rev = "refs/tags/v${version}";
-      hash = "sha256-q59cUW6613byHk4LGl+sefO5czLSWxOrSyLbJ1pkNEY=";
+      hash = "sha256-Rq5pAVmxlWBVnph20fkAwbfy+iuBNlfFy14poDPd5h0=";
     };
 
     # On update, it can be useful to steal the changes from gentoo
     # https://gitweb.gentoo.org/repo/gentoo.git/tree/sci-libs/tensorflow
+
+    patches = [
+      # Fix "no such target '@com_google_protobuf//:well_known_types_py_pb2_genproto': target 'well_known_types_py_pb2_genproto' not declared in package
+      (fetchpatch {
+        name = "fix-genproto.patch";
+        url = "https://raw.githubusercontent.com/conda-forge/tensorflow-feedstock/aed192b9dff04dddbbc60b2318f0a1e891eaaf9a/recipe/patches/0002-fix-genproto.patch";
+        hash = "sha256-zcUN3CQA2zcj4UMvgFbzztQYcycJoOFMEKp4VZBkOw8=";
+      })
+
+      # Fix "no such target '@absl_py//absl/flags:argparse_flags': target 'argparse_flags' not declared in package 'absl/flags'"
+      (fetchpatch {
+        name = "fix-absl-py.patch";
+        url = "https://raw.githubusercontent.com/conda-forge/tensorflow-feedstock/aed192b9dff04dddbbc60b2318f0a1e891eaaf9a/recipe/patches/0003-fix-absl-py.patch";
+        hash = "sha256-tWHD1W6s2M0/17EUAztSat8vSU4KX/+nwbSih8acKF4=";
+      })
+    ];
 
     nativeBuildInputs = [
       which pythonEnv cython perl protobuf-core
@@ -236,7 +252,6 @@ let
       jsoncpp
       libjpeg_turbo
       libpng
-      lmdb-core
       (pybind11.overridePythonAttrs (_: { inherit stdenv; }))
       snappy
       sqlite
@@ -284,7 +299,6 @@ let
       "icu"
       "jsoncpp_git"
       "libjpeg_turbo"
-      "lmdb"
       "nasm"
       "opt_einsum_archive"
       "org_sqlite"
@@ -448,10 +462,7 @@ let
       license = licenses.asl20;
       maintainers = with maintainers; [ abbradar ];
       platforms = with platforms; linux ++ darwin;
-      # More vulnerabilities in 2.11.1 really; https://github.com/tensorflow/tensorflow/releases
-      knownVulnerabilities = [ "CVE-2023-33976" ];
-      broken = true || # most likely needs dealing with protobuf/abseil updates
-        !(xlaSupport -> cudaSupport) || python.pythonVersion == "3.11";
+      broken = !(xlaSupport -> cudaSupport);
     } // lib.optionalAttrs stdenv.isDarwin {
       timeout = 86400; # 24 hours
       maxSilent = 14400; # 4h, double the default of 7200s

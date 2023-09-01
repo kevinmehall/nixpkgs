@@ -12587,7 +12587,6 @@ self: super: with self; {
     flatbuffers-python = self.flatbuffers;
     protobuf-core = pkgs.protobuf;
     protobuf-python = self.protobuf;
-    lmdb-core = pkgs.lmdb;
   };
 
   tensorflow-datasets = callPackage ../development/python-modules/tensorflow-datasets { };
